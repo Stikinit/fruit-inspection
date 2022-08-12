@@ -4,8 +4,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-image=cv2.imread("./asset/first_task/C0_000001.png",cv2.IMREAD_GRAYSCALE)
-img = cv2.imread("./asset/first_task/C1_000001.png")
+image=cv2.imread("./asset/first_task/C0_000003.png",cv2.IMREAD_GRAYSCALE)
+img = cv2.imread("./asset/first_task/C1_000003.png")
 final_img=img.copy()
 
 t_image=cv2.adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,11,2)
@@ -18,21 +18,22 @@ open=cv2.morphologyEx(t_image,cv2.MORPH_OPEN,kernel_opcl)
 
 contours,hier=cv2.findContours(open,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 #open_rgb=cv2.cvtColor(open,cv2.COLOR_BGR2RGB)
+blank=np.zeros(image.shape,np.uint8)
 contours.sort(key=cv2.contourArea,reverse=True)
-cv2.drawContours(open,contours,0,(255,255,255),-1)
+cv2.drawContours(blank,contours,1,(255,255,255),-1)
 
-#plt.imshow(open,cmap='gray',vmin=0, vmax=255)
-#plt.show()
+plt.imshow(open,cmap='gray',vmin=0, vmax=255)
+plt.show()
 kernel_opcl=cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
-mask=cv2.morphologyEx(open,cv2.MORPH_OPEN,kernel_opcl)
+mask=cv2.morphologyEx(blank,cv2.MORPH_OPEN,kernel_opcl)
 
-#plt.imshow(mask, cmap='gray',vmin=0, vmax=255)
-#plt.show()
+plt.imshow(mask, cmap='gray',vmin=0, vmax=255)
+plt.show()
 
 masked=cv2.bitwise_and(image,image,mask=mask)
 #cv2.imwrite("C:/Users/danie/Desktop/cvip prog/Images/maskededd.png",masked)
-#plt.imshow(masked, cmap='gray',vmin=0, vmax=255)
-#plt.show()
+plt.imshow(masked, cmap='gray',vmin=0, vmax=255)
+plt.show()
 
 img_blur = cv2.GaussianBlur(masked, (3,3), 0)
 edges = cv2.Canny(image=masked, threshold1=70, threshold2=130)
