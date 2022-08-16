@@ -3,10 +3,11 @@ from cv2 import pointPolygonTest
 from cv2 import COVAR_NORMAL
 import numpy as np
 from matplotlib import pyplot as plt
+from colorthief import ColorThief
 
 
-image=cv2.imread("./asset/second_task/C0_000004.png",cv2.IMREAD_GRAYSCALE)
-img = cv2.imread("./asset/second_task/C1_000004.png",)
+image=cv2.imread("./asset/second_task/C0_000005.png",cv2.IMREAD_GRAYSCALE)
+img = cv2.imread("./asset/second_task/C1_000005.png",)
 final_img=img.copy()
 
 t_image=cv2.adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,11,2)
@@ -47,7 +48,7 @@ counter=0
 
 for i in range(masked.shape[0]):
     for j in range(masked.shape[1]):
-        if(masked[i,j].all()!=np.zeros(3).all()):
+        #if(masked[i,j].all()!=np.zeros(3).all()):
             counter=counter+1
             blue=blue+masked[i,j][0]
             green=green+masked[i,j][1]
@@ -59,9 +60,36 @@ mean_green=green/counter
 mean_red=red/counter
 
 
-
 print(mean_blue,mean_green,mean_red)
-mymean=np.array([mean_blue,mean_green,mean_red])
+
+
+#mymean=masked[120][110]
+#mymean=np.array([mean_blue,mean_green,mean_red])
+
+color_thief = ColorThief('./asset/second_task/C1_000005.png')
+# get the dominant color
+dominant_color = color_thief.get_color(quality=1)
+
+palette = color_thief.get_palette(color_count=3)
+print(palette[0][0])
+cv2.waitKey(0)
+max=0
+max_i=0
+for i,c in enumerate(palette):
+    sum=palette[i][0]+palette[i][1]+palette[i][2]
+    if sum>max:
+        max=sum
+        max_i=i
+
+mymean=np.array(palette[max_i])
+
+
+
+
+
+
+print(mymean)
+cv2.waitKey(0)
 
 b,g,r=cv2.split(masked)
 b_flat=b.flatten()
@@ -75,3 +103,44 @@ print(covar)
 print(masked.shape)
 cv2.imshow("finestra", masked)
 cv2.waitKey(0)
+
+
+
+#mymean=[mean_blue,mean_green,mean_red]
+
+#inv_cov=covar.inv(cv2.DECOMP_SVD)
+
+covar2=np.diag(np.diag(covar))
+
+u,s,v=np.linalg.svd(covar)
+inv_cov=np.dot(v.transpose(),np.dot(np.diag(s**-1),u.transpose()))
+#inv_cov=np.linalg.inv(covar2)
+pos=lambda x: abs(x)
+inv_cov=pos(inv_cov)
+
+print(inv_cov)
+mymean=mymean.astype(np.float32)
+masked=masked.astype(np.float32)
+inv_cov=inv_cov.astype(np.float32)
+dist=np.zeros((masked.shape[0],masked.shape[1]),np.double)
+for i, c in enumerate(masked):
+    for j, k in enumerate(masked[i]):
+
+        #print(mymean.shape)
+        dist[i,j]=cv2.Mahalanobis(masked[i][j],mymean,inv_cov)
+
+max_dist=np.max(dist)
+min_dist=np.min(dist)
+
+print(max_dist)
+print(min_dist)
+
+OldRange = (max_dist - min_dist)
+NewRange = 255
+myfcn=lambda x: (((x - min_dist) * NewRange) / OldRange)
+colour_dist=myfcn(dist)
+print(colour_dist)
+colour_dist=colour_dist.astype(int)
+
+plt.imshow(dist, cmap='viridis',vmin=min_dist, vmax=max_dist)
+plt.show()
