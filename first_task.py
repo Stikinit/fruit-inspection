@@ -19,6 +19,7 @@ open=cv2.morphologyEx(t_image,cv2.MORPH_OPEN,kernel_opcl)
 contours,hier=cv2.findContours(open,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 #open_rgb=cv2.cvtColor(open,cv2.COLOR_BGR2RGB)
 blank=np.zeros(image.shape,np.uint8)
+contours=list(contours)
 contours.sort(key=cv2.contourArea,reverse=True)
 cv2.drawContours(blank,contours,1,(255,255,255),-1)
 
@@ -48,6 +49,7 @@ cv2.waitKey(0)
 
 contours_edge,hier_edge=cv2.findContours(dilated,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 #open_rgb=cv2.cvtColor(open,cv2.COLOR_BGR2RGB)
+contours_edge=list(contours_edge)
 contours_edge.sort(key=cv2.contourArea,reverse=True)
 cv2.drawContours(img,contours_edge,-1,(0,0,255),1)
 

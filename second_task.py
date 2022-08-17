@@ -22,6 +22,7 @@ open=cv2.morphologyEx(t_image,cv2.MORPH_OPEN,kernel_opcl)
 
 contours,hier=cv2.findContours(open,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 #open_rgb=cv2.cvtColor(open,cv2.COLOR_BGR2RGB)
+contours=list(contours)
 contours.sort(key=cv2.contourArea,reverse=True)
 blank=np.zeros(image.shape,np.uint8)
 cv2.drawContours(blank,contours,1,(255,255,255),-1)
