@@ -5,9 +5,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 from colorthief import ColorThief
 
+imgpath_ir="./asset/second_task/C0_000005.png"
+imgpath_col="./asset/second_task/C1_000005.png"
 
-image=cv2.imread("./asset/second_task/C0_000005.png",cv2.IMREAD_GRAYSCALE)
-img = cv2.imread("./asset/second_task/C1_000005.png",)
+image=cv2.imread(imgpath_ir,cv2.IMREAD_GRAYSCALE)
+img = cv2.imread(imgpath_col,)
 final_img=img.copy()
 
 t_image=cv2.adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,11,2)
@@ -41,6 +43,8 @@ cv2.imshow("finestra", masked)
 #cv2.waitKey(0)
 
 
+
+
 red=0
 blue=0
 green=0
@@ -66,7 +70,7 @@ print(mean_blue,mean_green,mean_red)
 #mymean=masked[120][110]
 #mymean=np.array([mean_blue,mean_green,mean_red])
 
-color_thief = ColorThief('./asset/second_task/C1_000005.png')
+color_thief = ColorThief(imgpath_col)
 # get the dominant color
 dominant_color = color_thief.get_color(quality=1)
 
@@ -84,11 +88,6 @@ for i,c in enumerate(palette):
 mymean=np.array(palette[max_i])
 
 
-
-
-
-
-print(mymean)
 cv2.waitKey(0)
 
 b,g,r=cv2.split(masked)
@@ -99,8 +98,6 @@ r_flat=r.flatten()
 flattened=np.array([b_flat,g_flat,r_flat])
 print(flattened.shape)
 covar,mean_out=cv2.calcCovarMatrix(flattened, mean=mymean, flags=cv2.COVAR_ROWS)
-print(covar)
-print(masked.shape)
 cv2.imshow("finestra", masked)
 cv2.waitKey(0)
 
@@ -139,8 +136,14 @@ OldRange = (max_dist - min_dist)
 NewRange = 255
 myfcn=lambda x: (((x - min_dist) * NewRange) / OldRange)
 colour_dist=myfcn(dist)
-print(colour_dist)
+#print(colour_dist)
 colour_dist=colour_dist.astype(int)
 
+plt.imshow(dist, cmap='Greys',vmin=min_dist, vmax=max_dist)
+plt.show()
+
 plt.imshow(dist, cmap='viridis',vmin=min_dist, vmax=max_dist)
+plt.show()
+
+plt.imshow(image, cmap='gray',vmin=0, vmax=255)
 plt.show()
