@@ -11,9 +11,15 @@ class ColorSpace(Enum):
     LUV=1
     HSL=2
 
+class DistanceType(Enum):
+    EUCLIDIAN=0
+    MAHALANOBIS=1
+    DOUBLE=2
+
 imgpath_ir="./asset/second_task/C0_000005.png"
 imgpath_col="./asset/second_task/C1_000005.png"
-COLOR_SPACE=ColorSpace.RGB
+COLOR_SPACE=ColorSpace.LUV
+DISTANCE_TYPE=DistanceType.EUCLIDIAN
 
 image=cv2.imread(imgpath_ir,cv2.IMREAD_GRAYSCALE)
 img = cv2.imread(imgpath_col)
@@ -40,6 +46,12 @@ plt.show()
 
 masked=cv2.bitwise_and(img,img,mask=mask)
 cv2.imshow("finestra", masked)
+
+
+filtered=np.zeros(masked.shape,np.uint8)
+masked=cv2.bilateralFilter(masked, 5, 100, 100)
+plt.imshow(masked,vmin=0, vmax=255)
+plt.show()
 
 red=0
 blue=0
@@ -100,47 +112,96 @@ elif (COLOR_SPACE==ColorSpace.HSL):
     dominant=cv2.cvtColor(color_pixel, cv2.COLOR_RGB2HLS)[0][0]
     
 
+if (DISTANCE_TYPE==DistanceType.MAHALANOBIS):
+    # CREATE COVAR MATRIX
+    fc,sc,tc=cv2.split(masked)
+    fc_flat=fc.flatten()
+    sc_flat=sc.flatten()
+    tc_flat=tc.flatten()
 
-# CREATE COVAR MATRIX
-fc,sc,tc=cv2.split(masked)
-fc_flat=fc.flatten()
-sc_flat=sc.flatten()
-tc_flat=tc.flatten()
+    flattened=np.array([fc_flat,sc_flat,tc_flat])
+    print(flattened.shape)
+    covar,mean_out=cv2.calcCovarMatrix(flattened, mean=dominant, flags=cv2.COVAR_ROWS)
+    print(covar)
+    cv2.imshow("finestra", masked)
+    cv2.waitKey(0)
 
-flattened=np.array([fc_flat,sc_flat,tc_flat])
-print(flattened.shape)
-covar,mean_out=cv2.calcCovarMatrix(flattened, mean=dominant, flags=cv2.COVAR_ROWS)
-print(covar)
-cv2.imshow("finestra", masked)
-cv2.waitKey(0)
+    # INVERT COVAR MATRIX
+    #covar2=np.diag(np.diag(covar))
+    u,s,v=np.linalg.svd(covar)
+    inv_cov=np.dot(v.transpose(),np.dot(np.diag(s**-1),u.transpose()))
+    print(inv_cov)
+    #inv_cov=np.linalg.inv(covar2)
+    pos=lambda x: abs(x)
+    inv_cov=pos(inv_cov)
 
-# INVERT COVAR MATRIX
-#covar2=np.diag(np.diag(covar))
-u,s,v=np.linalg.svd(covar)
-inv_cov=np.dot(v.transpose(),np.dot(np.diag(s**-1),u.transpose()))
-print(inv_cov)
-#inv_cov=np.linalg.inv(covar2)
-pos=lambda x: abs(x)
-inv_cov=pos(inv_cov)
+    # CALC MAHALANOBIS DISTANCE FOR EACH PIXEL
+    dominant=dominant.astype(np.float32)
+    masked=masked.astype(np.float32)
+    inv_cov=inv_cov.astype(np.float32)
+    dist=np.zeros((masked.shape[0],masked.shape[1]),np.double)
+    for i, c in enumerate(masked):
+        for j, k in enumerate(masked[i]):
+            dist[i,j]=cv2.Mahalanobis(masked[i][j],dominant,inv_cov)
 
-# CALC MAHALANOBIS DISTANCE FOR EACH PIXEL
-dominant=dominant.astype(np.float32)
-masked=masked.astype(np.float32)
-inv_cov=inv_cov.astype(np.float32)
-dist=np.zeros((masked.shape[0],masked.shape[1]),np.double)
-for i, c in enumerate(masked):
-    for j, k in enumerate(masked[i]):
-        dist[i,j]=cv2.Mahalanobis(masked[i][j],dominant,inv_cov)
+elif (DISTANCE_TYPE==DistanceType.EUCLIDIAN):
+    dominant=dominant.astype(np.float32)
+    masked=masked.astype(np.float32)
+    dist=np.zeros((masked.shape[0],masked.shape[1]),np.double)
+    for i, c in enumerate(masked):
+        for j, k in enumerate(masked[i]):
+            dist[i,j] = cv2.norm(masked[i][j] - dominant, cv2.NORM_L2)
+
 
 max_dist=np.max(dist)
 min_dist=np.min(dist)
 
+OldRange = (max_dist - min_dist)
 
-plt.imshow(dist, cmap='Greys',vmin=min_dist, vmax=max_dist)
+map_fcn=lambda x:255-np.uint8(((x - min_dist) * 255) / OldRange)
+#NewValue = (((OldValue - min_dist) * 255) / OldRange)
+mapped_dist=map_fcn(dist)
+plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
 plt.show()
 
-plt.imshow(dist, cmap='viridis',vmin=min_dist, vmax=max_dist)
-plt.show()
+#for i, c in enumerate(mapped_dist):
+#        for j, k in enumerate(mapped_dist[i]):
+#            if(k<10):
+#                mapped_dist[i][j]=255
+#plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
+#plt.show()
 
-plt.imshow(image, cmap='gray',vmin=0, vmax=255)
-plt.show()
+if (DISTANCE_TYPE==DistanceType.DOUBLE):
+    mapped_dist=mapped_dist.astype(np.float32)
+    dist=np.zeros((mapped_dist.shape[0],mapped_dist.shape[1]),np.double)
+    for i, c in enumerate(mapped_dist):
+        for j, k in enumerate(mapped_dist[i]):
+            dist[i,j] = cv2.norm(mapped_dist[i][j] - 40, cv2.NORM_L2)
+
+    max_dist=np.max(dist)
+    min_dist=np.min(dist)
+    OldRange = (max_dist - min_dist)
+    mapped_dist=map_fcn(dist)
+
+    plt.imshow(mapped_dist, cmap='Greys',vmin=0, vmax=255)
+    plt.show()
+
+#filtered=np.zeros(mapped_dist.shape,np.uint8)
+#cv2.bilateralFilter(mapped_dist, 5, 200, 200,dst=filtered)
+#plt.imshow(filtered, cmap='gray',vmin=0, vmax=255)
+#plt.show()
+
+#mapped_dist=cv2.equalizeHist(mapped_dist)
+#plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
+#plt.show()
+
+
+#ret,t_img= cv2.threshold(mapped_dist,150,255,cv2.THRESH_BINARY)
+#plt.imshow(t_img, cmap='gray',vmin=0, vmax=255)
+#plt.show()
+
+edges = cv2.Canny(image=mapped_dist, threshold1=70, threshold2=120)
+cv2.imshow('Canny Edge Detection', edges)
+cv2.waitKey(0)
+
+
