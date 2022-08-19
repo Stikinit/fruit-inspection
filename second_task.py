@@ -35,23 +35,28 @@ contours.sort(key=cv2.contourArea,reverse=True)
 blank=np.zeros(image.shape,np.uint8)
 cv2.drawContours(blank,contours,1,(255,255,255),-1)
 
-plt.imshow(blank,cmap='gray',vmin=0, vmax=255)
-plt.show()
+#plt.imshow(blank,cmap='gray',vmin=0, vmax=255)
+#plt.show()
 
 kernel_opcl=cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
 mask=cv2.morphologyEx(blank,cv2.MORPH_OPEN,kernel_opcl)
 
-plt.imshow(mask, cmap='gray',vmin=0, vmax=255)
-plt.show()
+#plt.imshow(mask, cmap='gray',vmin=0, vmax=255)
+#plt.show()
 
 masked=cv2.bitwise_and(img,img,mask=mask)
-cv2.imshow("finestra", masked)
+#cv2.imshow("finestra", masked)
 
+# masked = cv2.cvtColor(masked, cv2.COLOR_BGR2HLS)
+#for i, c in enumerate(masked):
+#        for j, k in enumerate(masked[i]):
+#            if(k[1]<10):
+#                masked[i][j][1]=255
+#masked = cv2.cvtColor(masked, cv2.COLOR_HLS2BGR)
 
-filtered=np.zeros(masked.shape,np.uint8)
-masked=cv2.bilateralFilter(masked, 5, 100, 100)
-plt.imshow(masked,vmin=0, vmax=255)
-plt.show()
+#plt.imshow(masked, cmap='gray',vmin=0, vmax=255)
+#plt.show()
+
 
 red=0
 blue=0
@@ -121,7 +126,7 @@ if (DISTANCE_TYPE==DistanceType.MAHALANOBIS):
 
     flattened=np.array([fc_flat,sc_flat,tc_flat])
     print(flattened.shape)
-    covar,mean_out=cv2.calcCovarMatrix(flattened, mean=dominant, flags=cv2.COVAR_ROWS)
+    covar,mean_out=cv2.calcCovarMatrix(flattened, mean=mymean, flags=cv2.COVAR_ROWS)
     print(covar)
     cv2.imshow("finestra", masked)
     cv2.waitKey(0)
@@ -137,12 +142,13 @@ if (DISTANCE_TYPE==DistanceType.MAHALANOBIS):
 
     # CALC MAHALANOBIS DISTANCE FOR EACH PIXEL
     dominant=dominant.astype(np.float32)
+    mymean=mymean.astype(np.float32)
     masked=masked.astype(np.float32)
     inv_cov=inv_cov.astype(np.float32)
     dist=np.zeros((masked.shape[0],masked.shape[1]),np.double)
     for i, c in enumerate(masked):
         for j, k in enumerate(masked[i]):
-            dist[i,j]=cv2.Mahalanobis(masked[i][j],dominant,inv_cov)
+            dist[i,j]=cv2.Mahalanobis(masked[i][j],mymean,inv_cov)
 
 elif (DISTANCE_TYPE==DistanceType.EUCLIDIAN):
     dominant=dominant.astype(np.float32)
@@ -155,14 +161,16 @@ elif (DISTANCE_TYPE==DistanceType.EUCLIDIAN):
 
 max_dist=np.max(dist)
 min_dist=np.min(dist)
+#plt.imshow(dist, cmap='viridis',vmin=min_dist, vmax=max_dist)
+#plt.show()
 
 OldRange = (max_dist - min_dist)
 
 map_fcn=lambda x:255-np.uint8(((x - min_dist) * 255) / OldRange)
 #NewValue = (((OldValue - min_dist) * 255) / OldRange)
 mapped_dist=map_fcn(dist)
-plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
-plt.show()
+#plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
+#plt.show()
 
 #for i, c in enumerate(mapped_dist):
 #        for j, k in enumerate(mapped_dist[i]):
@@ -186,22 +194,38 @@ if (DISTANCE_TYPE==DistanceType.DOUBLE):
     plt.imshow(mapped_dist, cmap='Greys',vmin=0, vmax=255)
     plt.show()
 
-#filtered=np.zeros(mapped_dist.shape,np.uint8)
-#cv2.bilateralFilter(mapped_dist, 5, 200, 200,dst=filtered)
-#plt.imshow(filtered, cmap='gray',vmin=0, vmax=255)
-#plt.show()
 
 #mapped_dist=cv2.equalizeHist(mapped_dist)
 #plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
 #plt.show()
 
+mapped_dist=cv2.bilateralFilter(mapped_dist, 20, 20, 20)
+plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
+plt.show()
 
-#ret,t_img= cv2.threshold(mapped_dist,150,255,cv2.THRESH_BINARY)
-#plt.imshow(t_img, cmap='gray',vmin=0, vmax=255)
+kernel = np.array([[-1,-1,-1], 
+                       [-1, 9,-1],
+                       [-1,-1,-1]])
+mapped_dist = cv2.filter2D(mapped_dist, -1, kernel) # applying the sharpening kernel to the input image & displaying it.
+plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
+plt.show() 
+
+mapped_dist=cv2.medianBlur(mapped_dist, 9)
+plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
+plt.show()
+
+#mapped_dist=cv2.adaptiveThreshold(mapped_dist, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11,5)
+#plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
 #plt.show()
 
-edges = cv2.Canny(image=mapped_dist, threshold1=70, threshold2=120)
+#kernel_opcl=cv2.getStructuringElement(cv2.MORPH_CROSS,(2,2))
+#mapped_dist=cv2.morphologyEx(mapped_dist,cv2.MORPH_OPEN,kernel_opcl)
+#plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
+#plt.show()
+
+edges = cv2.Canny(image=mapped_dist, threshold1=30, threshold2=150)
 cv2.imshow('Canny Edge Detection', edges)
 cv2.waitKey(0)
+
 
 
