@@ -16,10 +16,14 @@ class DistanceType(Enum):
     MAHALANOBIS=1
     DOUBLE=2
 
-imgpath_ir="./asset/second_task/C0_000005.png"
-imgpath_col="./asset/second_task/C1_000005.png"
+imgpath_ir="./asset/second_task/C0_000004.png"
+imgpath_col="./asset/second_task/C1_000004.png"
 COLOR_SPACE=ColorSpace.LUV
-DISTANCE_TYPE=DistanceType.EUCLIDIAN
+DISTANCE_TYPE=DistanceType.MAHALANOBIS
+X_MIN = 42
+X_MAX = 53
+Y_MIN = 40
+Y_MAX = 51
 
 image=cv2.imread(imgpath_ir,cv2.IMREAD_GRAYSCALE)
 img = cv2.imread(imgpath_col)
@@ -27,9 +31,9 @@ final_img=img.copy()
 
 t_image=cv2.adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,11,2)
 kernel_opcl=cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-open=cv2.morphologyEx(t_image,cv2.MORPH_OPEN,kernel_opcl)
+opened=cv2.morphologyEx(t_image,cv2.MORPH_OPEN,kernel_opcl)
 
-contours,hier=cv2.findContours(open,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+contours,hier=cv2.findContours(opened,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 contours=list(contours)
 contours.sort(key=cv2.contourArea,reverse=True)
 blank=np.zeros(image.shape,np.uint8)
@@ -41,42 +45,42 @@ cv2.drawContours(blank,contours,1,(255,255,255),-1)
 kernel_opcl=cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
 mask=cv2.morphologyEx(blank,cv2.MORPH_OPEN,kernel_opcl)
 
-#plt.imshow(mask, cmap='gray',vmin=0, vmax=255)
+#plt.imshow(mask, cmap='',vmin=0, vmax=255)
 #plt.show()
 
 masked=cv2.bitwise_and(img,img,mask=mask)
-#cv2.imshow("finestra", masked)
-
-# masked = cv2.cvtColor(masked, cv2.COLOR_BGR2HLS)
-#for i, c in enumerate(masked):
-#        for j, k in enumerate(masked[i]):
-#            if(k[1]<10):
-#                masked[i][j][1]=255
+#plt.imshow(mask, cmap='gray',vmin=0, vmax=255)
+#plt.show()
+#temp = cv2.cvtColor(masked, cv2.COLOR_BGR2GRAY)
+#for i, c in enumerate(temp):
+#        for j, k in enumerate(temp[i]):
+#            if(k<10):
+#                temp[i][j]=255
 #masked = cv2.cvtColor(masked, cv2.COLOR_HLS2BGR)
 
-#plt.imshow(masked, cmap='gray',vmin=0, vmax=255)
-#plt.show()
 
-
-red=0
-blue=0
-green=0
+ch1=0
+ch2=0
+ch3=0
 counter=0
-for i in range(masked.shape[0]):
-    for j in range(masked.shape[1]):
+for i in range(Y_MIN, Y_MAX):
+    for j in range(X_MIN, X_MAX):
         #if(masked[i,j].all()!=np.zeros(3).all()):
             counter=counter+1
-            blue=blue+masked[i,j][0]
-            green=green+masked[i,j][1]
-            red=red+masked[i,j][2]
-mean_blue=blue/counter
-mean_green=green/counter
-mean_red=red/counter     
-mymean=np.array([mean_blue,mean_green,mean_red])
+            ch1=ch1+masked[i,j][0]
+            ch2=ch2+masked[i,j][1]
+            ch3=ch3+masked[i,j][2]
+            final_img[i,j] = [255,255,255]
+mean_ch1=ch1/counter
+mean_ch2=ch2/counter
+mean_ch3=ch3/counter     
+mymean=np.array([mean_ch1,mean_ch2,mean_ch3])
 color_pixel = np.zeros((1,1,3), dtype="uint8")
 color_pixel[0][0][0] = mymean[0]
 color_pixel[0][0][1] = mymean[1]
 color_pixel[0][0][2] = mymean[2]
+
+
 
 if (COLOR_SPACE==ColorSpace.RGB):
     mymean=cv2.cvtColor(color_pixel, cv2.COLOR_BGR2RGB)[0][0]
@@ -89,6 +93,17 @@ elif (COLOR_SPACE==ColorSpace.HSL):
     masked = cv2.cvtColor(masked, cv2.COLOR_BGR2HLS)
 
 color_thief = ColorThief(imgpath_col)
+plt.imshow(final_img,vmin=0, vmax=255)
+plt.show()
+
+#with open('my_mean.csv', 'w') as my_file:
+        #for i in range(len(mymean)):
+        #np.savetxt(my_file, mymean)
+#print('Array exported to file')
+mymean = np.loadtxt('my_mean.csv')
+print(mymean)
+
+
 
 #GET BRIGHTEST COLOR FROM PALETTE
 palette = color_thief.get_palette(color_count=3)
@@ -119,7 +134,8 @@ elif (COLOR_SPACE==ColorSpace.HSL):
 
 if (DISTANCE_TYPE==DistanceType.MAHALANOBIS):
     # CREATE COVAR MATRIX
-    fc,sc,tc=cv2.split(masked)
+    cropped_selection = masked[Y_MIN:Y_MAX,X_MIN:X_MAX]
+    fc,sc,tc=cv2.split(cropped_selection)
     fc_flat=fc.flatten()
     sc_flat=sc.flatten()
     tc_flat=tc.flatten()
@@ -128,17 +144,27 @@ if (DISTANCE_TYPE==DistanceType.MAHALANOBIS):
     print(flattened.shape)
     covar,mean_out=cv2.calcCovarMatrix(flattened, mean=mymean, flags=cv2.COVAR_ROWS)
     print(covar)
-    cv2.imshow("finestra", masked)
-    cv2.waitKey(0)
+    print(np.linalg.det(covar))
+    #cv2.imshow("finestra", masked)
+    #cv2.waitKey(0)
 
     # INVERT COVAR MATRIX
     #covar2=np.diag(np.diag(covar))
-    u,s,v=np.linalg.svd(covar)
+    u,s,v=np.linalg.svd(covar, full_matrices=True)
     inv_cov=np.dot(v.transpose(),np.dot(np.diag(s**-1),u.transpose()))
+    #print(inv_cov)
+    #inv_cov=np.linalg.pinv(covar2)
     print(inv_cov)
-    #inv_cov=np.linalg.inv(covar2)
     pos=lambda x: abs(x)
-    inv_cov=pos(inv_cov)
+    #inv_cov=pos(inv_cov)
+    #with open('my_inv_cov.csv', 'w') as my_file:
+    #    for i in inv_cov:
+    #        np.savetxt(my_file, i)
+    #print('Array exported to file')
+
+    inv_cov = np.loadtxt('my_inv_cov.csv')
+    inv_cov = inv_cov.reshape(3,3)
+    print(inv_cov)
 
     # CALC MAHALANOBIS DISTANCE FOR EACH PIXEL
     dominant=dominant.astype(np.float32)
@@ -156,7 +182,7 @@ elif (DISTANCE_TYPE==DistanceType.EUCLIDIAN):
     dist=np.zeros((masked.shape[0],masked.shape[1]),np.double)
     for i, c in enumerate(masked):
         for j, k in enumerate(masked[i]):
-            dist[i,j] = cv2.norm(masked[i][j] - dominant, cv2.NORM_L2)
+            dist[i,j] = cv2.norm(masked[i][j] - mymean, cv2.NORM_L2)
 
 
 max_dist=np.max(dist)
@@ -166,7 +192,7 @@ min_dist=np.min(dist)
 
 OldRange = (max_dist - min_dist)
 
-map_fcn=lambda x:255-np.uint8(((x - min_dist) * 255) / OldRange)
+map_fcn=lambda x:np.uint8(((x - min_dist) * 255) / OldRange)
 #NewValue = (((OldValue - min_dist) * 255) / OldRange)
 mapped_dist=map_fcn(dist)
 #plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
@@ -174,8 +200,11 @@ mapped_dist=map_fcn(dist)
 
 #for i, c in enumerate(mapped_dist):
 #        for j, k in enumerate(mapped_dist[i]):
-#            if(k<10):
-#                mapped_dist[i][j]=255
+#            if(k<30):
+#               mapped_dist[i][j]=0
+plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
+plt.show()
+#mapped_dist=cv2.bitwise_and(mapped_dist,mapped_dist,mask=mask)
 #plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
 #plt.show()
 
@@ -194,14 +223,13 @@ if (DISTANCE_TYPE==DistanceType.DOUBLE):
     plt.imshow(mapped_dist, cmap='Greys',vmin=0, vmax=255)
     plt.show()
 
+mapped_dist=cv2.bilateralFilter(mapped_dist, 20, 20, 20)
+plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
+plt.show()
 
 #mapped_dist=cv2.equalizeHist(mapped_dist)
 #plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
 #plt.show()
-
-mapped_dist=cv2.bilateralFilter(mapped_dist, 20, 20, 20)
-plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
-plt.show()
 
 kernel = np.array([[-1,-1,-1], 
                        [-1, 9,-1],
@@ -223,7 +251,19 @@ plt.show()
 #plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
 #plt.show()
 
-edges = cv2.Canny(image=mapped_dist, threshold1=30, threshold2=150)
+edges = cv2.Canny(image=mapped_dist, threshold1=1, threshold2=196)
+cv2.imshow('Canny Edge Detection', edges)
+cv2.waitKey(0)
+
+
+
+kernel_dil=cv2.getStructuringElement(cv2.MORPH_CROSS,(4,4))
+edges=cv2.dilate(edges,kernel_dil,iterations=1)
+cv2.imshow('Canny Edge Detection', edges)
+cv2.waitKey(0)
+
+kernel_ero=cv2.getStructuringElement(cv2.MORPH_CROSS,(2,2))
+edges = cv2.erode(edges,kernel_ero,iterations=1)
 cv2.imshow('Canny Edge Detection', edges)
 cv2.waitKey(0)
 
