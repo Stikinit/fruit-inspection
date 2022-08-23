@@ -20,10 +20,14 @@ imgpath_ir="./asset/second_task/C0_000004.png"
 imgpath_col="./asset/second_task/C1_000004.png"
 COLOR_SPACE=ColorSpace.LUV
 DISTANCE_TYPE=DistanceType.MAHALANOBIS
-X_MIN = 42
-X_MAX = 53
-Y_MIN = 40
-Y_MAX = 51
+#X_MIN = 29
+X_MIN = 190
+#X_MAX = 40
+X_MAX = 206
+#Y_MIN = 53
+Y_MIN = 160
+#Y_MAX = 64
+Y_MAX = 176
 
 image=cv2.imread(imgpath_ir,cv2.IMREAD_GRAYSCALE)
 img = cv2.imread(imgpath_col)
@@ -58,6 +62,13 @@ masked=cv2.bitwise_and(img,img,mask=mask)
 #                temp[i][j]=255
 #masked = cv2.cvtColor(masked, cv2.COLOR_HLS2BGR)
 
+#masked=cv2.bilateralFilter(masked, 20, 20, 20)
+#plt.imshow(masked,cmap='gray',vmin=0, vmax=255)
+#plt.show()
+
+#masked=cv2.medianBlur(masked, 5)
+#plt.imshow(masked,cmap='gray',vmin=0, vmax=255)
+#plt.show()
 
 ch1=0
 ch2=0
@@ -96,12 +107,12 @@ color_thief = ColorThief(imgpath_col)
 plt.imshow(final_img,vmin=0, vmax=255)
 plt.show()
 
-#with open('my_mean.csv', 'w') as my_file:
-        #for i in range(len(mymean)):
+#with open('my_mean_05.csv', 'w') as my_file:
+    #for i in range(len(mymean)):
         #np.savetxt(my_file, mymean)
 #print('Array exported to file')
-mymean = np.loadtxt('my_mean.csv')
-print(mymean)
+#mymean = np.loadtxt('my_mean.csv')
+#print(mymean)
 
 
 
@@ -154,17 +165,16 @@ if (DISTANCE_TYPE==DistanceType.MAHALANOBIS):
     inv_cov=np.dot(v.transpose(),np.dot(np.diag(s**-1),u.transpose()))
     #print(inv_cov)
     #inv_cov=np.linalg.pinv(covar2)
-    print(inv_cov)
     pos=lambda x: abs(x)
     #inv_cov=pos(inv_cov)
-    #with open('my_inv_cov.csv', 'w') as my_file:
-    #    for i in inv_cov:
-    #        np.savetxt(my_file, i)
+    #with open('my_inv_cov_04.csv', 'w') as my_file:
+        #for i in inv_cov:
+            #np.savetxt(my_file, i)
     #print('Array exported to file')
 
-    inv_cov = np.loadtxt('my_inv_cov.csv')
-    inv_cov = inv_cov.reshape(3,3)
-    print(inv_cov)
+    #inv_cov = np.loadtxt('my_inv_cov.csv')
+    #inv_cov = inv_cov.reshape(3,3)
+    #print(inv_cov)
 
     # CALC MAHALANOBIS DISTANCE FOR EACH PIXEL
     dominant=dominant.astype(np.float32)
@@ -223,24 +233,26 @@ if (DISTANCE_TYPE==DistanceType.DOUBLE):
     plt.imshow(mapped_dist, cmap='Greys',vmin=0, vmax=255)
     plt.show()
 
-mapped_dist=cv2.bilateralFilter(mapped_dist, 20, 20, 20)
-plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
-plt.show()
-
 #mapped_dist=cv2.equalizeHist(mapped_dist)
 #plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
 #plt.show()
+
+mapped_dist=cv2.bilateralFilter(mapped_dist, 20, 20, 20)
+#plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
+#plt.show()
+
+
 
 kernel = np.array([[-1,-1,-1], 
                        [-1, 9,-1],
                        [-1,-1,-1]])
 mapped_dist = cv2.filter2D(mapped_dist, -1, kernel) # applying the sharpening kernel to the input image & displaying it.
-plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
-plt.show() 
+#plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
+#plt.show() 
 
 mapped_dist=cv2.medianBlur(mapped_dist, 9)
-plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
-plt.show()
+#plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
+#plt.show()
 
 #mapped_dist=cv2.adaptiveThreshold(mapped_dist, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11,5)
 #plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
@@ -251,14 +263,14 @@ plt.show()
 #plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
 #plt.show()
 
-edges = cv2.Canny(image=mapped_dist, threshold1=1, threshold2=196)
+edges = cv2.Canny(image=mapped_dist, threshold1=10, threshold2=250)
 cv2.imshow('Canny Edge Detection', edges)
 cv2.waitKey(0)
 
 
 
-kernel_dil=cv2.getStructuringElement(cv2.MORPH_CROSS,(4,4))
-edges=cv2.dilate(edges,kernel_dil,iterations=1)
+kernel_dil=cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+edges=cv2.dilate(edges,kernel_dil,iterations=2)
 cv2.imshow('Canny Edge Detection', edges)
 cv2.waitKey(0)
 
@@ -267,5 +279,32 @@ edges = cv2.erode(edges,kernel_ero,iterations=1)
 cv2.imshow('Canny Edge Detection', edges)
 cv2.waitKey(0)
 
+contours,hier=cv2.findContours(edges,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+#open_rgb=cv2.cvtColor(open,cv2.COLOR_BGR2RGB)
+
+contours=list(contours)
+contours.sort(key=cv2.contourArea,reverse=True)
+contours.pop(0)
+
+img_hsl = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+cv2.imshow('Robbe',img_hsl)
+cv2.waitKey(0)
+for i,c in enumerate(contours):
+    blank=np.zeros(image.shape,np.uint8)
+    cv2.drawContours(blank,contours,i,(255,255,255),-1)
+    #plt.imshow(blank,vmin=0, vmax=255)
+    #plt.show()
+    locs = np.where(blank == 255)
+    r,g,b=cv2.split(img)
+    plt.imshow(r, cmap='gray', vmin=0, vmax=255)
+    plt.show()
+    pixels = r[locs]
+    
+    print(pixels)
+    # First approach to eliminate small contours: ignore all contours smaller than the smallest defect possible (in this case the small hole in the first image)
+    #if (np.mean(pixels) < ) and (cv2.contourArea(contour)>=126.0) and (cv2.contourArea(contour)<50000.0)):
+    #    filtered_contours.append(contour)
+
+    
 
 
