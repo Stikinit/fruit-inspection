@@ -21,13 +21,13 @@ imgpath_col="./asset/second_task/C1_000004.png"
 COLOR_SPACE=ColorSpace.LUV
 DISTANCE_TYPE=DistanceType.MAHALANOBIS
 #X_MIN = 29
-X_MIN = 190
+X_MIN = 124
 #X_MAX = 40
-X_MAX = 206
+X_MAX = 135
 #Y_MIN = 53
-Y_MIN = 160
+Y_MIN = 94
 #Y_MAX = 64
-Y_MAX = 176
+Y_MAX = 105
 
 image=cv2.imread(imgpath_ir,cv2.IMREAD_GRAYSCALE)
 img = cv2.imread(imgpath_col)
@@ -53,6 +53,25 @@ mask=cv2.morphologyEx(blank,cv2.MORPH_OPEN,kernel_opcl)
 #plt.show()
 
 masked=cv2.bitwise_and(img,img,mask=mask)
+
+
+# converting to LAB color space
+lab= cv2.cvtColor(masked, cv2.COLOR_BGR2LAB)
+l_channel, a, b = cv2.split(lab)
+# Applying CLAHE to L-channel
+# feel free to try different values for the limit and grid size:
+clahe = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(6,6))
+cl = clahe.apply(l_channel)
+# merge the CLAHE enhanced L-channel with the a and b channel
+limg = cv2.merge((cl,a,b))
+# Converting image from LAB Color model to BGR color spcae
+enhanced_img = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+# Stacking the original image with the enhanced image
+result = np.hstack((masked, enhanced_img))
+#cv2.imshow('Result', result)
+masked=enhanced_img.copy()
+
+
 #plt.imshow(mask, cmap='gray',vmin=0, vmax=255)
 #plt.show()
 #temp = cv2.cvtColor(masked, cv2.COLOR_BGR2GRAY)
@@ -62,7 +81,7 @@ masked=cv2.bitwise_and(img,img,mask=mask)
 #                temp[i][j]=255
 #masked = cv2.cvtColor(masked, cv2.COLOR_HLS2BGR)
 
-#masked=cv2.bilateralFilter(masked, 20, 20, 20)
+masked=cv2.bilateralFilter(masked, 20, 20, 20)
 #plt.imshow(masked,cmap='gray',vmin=0, vmax=255)
 #plt.show()
 
@@ -174,7 +193,7 @@ if (DISTANCE_TYPE==DistanceType.MAHALANOBIS):
 
     #inv_cov = np.loadtxt('my_inv_cov.csv')
     #inv_cov = inv_cov.reshape(3,3)
-    #print(inv_cov)
+    print(inv_cov)
 
     # CALC MAHALANOBIS DISTANCE FOR EACH PIXEL
     dominant=dominant.astype(np.float32)
@@ -197,114 +216,16 @@ elif (DISTANCE_TYPE==DistanceType.EUCLIDIAN):
 
 max_dist=np.max(dist)
 min_dist=np.min(dist)
-#plt.imshow(dist, cmap='viridis',vmin=min_dist, vmax=max_dist)
-#plt.show()
+plt.imshow(dist, cmap='twilight',vmin=min_dist, vmax=max_dist)
+plt.show()
 
 OldRange = (max_dist - min_dist)
 
 map_fcn=lambda x:np.uint8(((x - min_dist) * 255) / OldRange)
-#NewValue = (((OldValue - min_dist) * 255) / OldRange)
 mapped_dist=map_fcn(dist)
-#plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
-#plt.show()
-
-#for i, c in enumerate(mapped_dist):
-#        for j, k in enumerate(mapped_dist[i]):
-#            if(k<30):
-#               mapped_dist[i][j]=0
-plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
-plt.show()
-#mapped_dist=cv2.bitwise_and(mapped_dist,mapped_dist,mask=mask)
-#plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
-#plt.show()
-
-if (DISTANCE_TYPE==DistanceType.DOUBLE):
-    mapped_dist=mapped_dist.astype(np.float32)
-    dist=np.zeros((mapped_dist.shape[0],mapped_dist.shape[1]),np.double)
-    for i, c in enumerate(mapped_dist):
-        for j, k in enumerate(mapped_dist[i]):
-            dist[i,j] = cv2.norm(mapped_dist[i][j] - 40, cv2.NORM_L2)
-
-    max_dist=np.max(dist)
-    min_dist=np.min(dist)
-    OldRange = (max_dist - min_dist)
-    mapped_dist=map_fcn(dist)
-
-    plt.imshow(mapped_dist, cmap='Greys',vmin=0, vmax=255)
-    plt.show()
-
-#mapped_dist=cv2.equalizeHist(mapped_dist)
-#plt.imshow(mapped_dist, cmap='gray',vmin=0, vmax=255)
-#plt.show()
-
-mapped_dist=cv2.bilateralFilter(mapped_dist, 20, 20, 20)
-#plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
-#plt.show()
-
-
-
-kernel = np.array([[-1,-1,-1], 
-                       [-1, 9,-1],
-                       [-1,-1,-1]])
-mapped_dist = cv2.filter2D(mapped_dist, -1, kernel) # applying the sharpening kernel to the input image & displaying it.
-#plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
-#plt.show() 
-
-mapped_dist=cv2.medianBlur(mapped_dist, 9)
-#plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
-#plt.show()
-
-#mapped_dist=cv2.adaptiveThreshold(mapped_dist, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11,5)
-#plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
-#plt.show()
-
-#kernel_opcl=cv2.getStructuringElement(cv2.MORPH_CROSS,(2,2))
-#mapped_dist=cv2.morphologyEx(mapped_dist,cv2.MORPH_OPEN,kernel_opcl)
-#plt.imshow(mapped_dist,cmap='gray',vmin=0, vmax=255)
-#plt.show()
-
-edges = cv2.Canny(image=mapped_dist, threshold1=10, threshold2=250)
-cv2.imshow('Canny Edge Detection', edges)
+mapped_dist=cv2.applyColorMap(mapped_dist,cv2.COLORMAP_TWILIGHT)
+cv2.imshow("We fratm", mapped_dist)
 cv2.waitKey(0)
 
-
-
-kernel_dil=cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-edges=cv2.dilate(edges,kernel_dil,iterations=2)
-cv2.imshow('Canny Edge Detection', edges)
-cv2.waitKey(0)
-
-kernel_ero=cv2.getStructuringElement(cv2.MORPH_CROSS,(2,2))
-edges = cv2.erode(edges,kernel_ero,iterations=1)
-cv2.imshow('Canny Edge Detection', edges)
-cv2.waitKey(0)
-
-contours,hier=cv2.findContours(edges,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-#open_rgb=cv2.cvtColor(open,cv2.COLOR_BGR2RGB)
-
-contours=list(contours)
-contours.sort(key=cv2.contourArea,reverse=True)
-contours.pop(0)
-
-img_hsl = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
-cv2.imshow('Robbe',img_hsl)
-cv2.waitKey(0)
-for i,c in enumerate(contours):
-    blank=np.zeros(image.shape,np.uint8)
-    cv2.drawContours(blank,contours,i,(255,255,255),-1)
-    #plt.imshow(blank,vmin=0, vmax=255)
-    #plt.show()
-    locs = np.where(blank == 255)
-    r,g,b=cv2.split(img)
-    plt.imshow(r, cmap='gray', vmin=0, vmax=255)
-    plt.show()
-    pixels = r[locs]
-    
-    print(pixels)
-    # First approach to eliminate small contours: ignore all contours smaller than the smallest defect possible (in this case the small hole in the first image)
-    #if (np.mean(pixels) < ) and (cv2.contourArea(contour)>=126.0) and (cv2.contourArea(contour)<50000.0)):
-    #    filtered_contours.append(contour)
-
-    
-
+# From here inrange function to capture the russet
 
