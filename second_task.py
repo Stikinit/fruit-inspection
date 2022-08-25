@@ -31,8 +31,8 @@ if(IMAGE==Image_num.IMG4):
     Y_MAX = 105
 
 elif(IMAGE==Image_num.IMG5):
-    imgpath_ir="./asset/second_task/C0_000004.png"
-    imgpath_col="./asset/second_task/C1_000004.png"
+    imgpath_ir="./asset/second_task/C0_000005.png"
+    imgpath_col="./asset/second_task/C1_000005.png"
     X_MIN = 139
     X_MAX = 144
     Y_MIN = 152
@@ -288,7 +288,35 @@ output_img[np.where(blank2==255)]=0
 cv2.imshow("Masked",output_img)
 cv2.waitKey(0)
 
+output_img = cv2.cvtColor(output_img, cv2.COLOR_BGR2GRAY)
+
 retval,output_img=cv2.threshold(output_img,1,255,cv2.THRESH_BINARY)
 cv2.imshow("aaaaaaaaaaaaa",output_img)
 cv2.waitKey(0)
+
+kernel_dil=cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+output_img=cv2.dilate(output_img,kernel_dil,iterations=1)
+cv2.imshow("aaaaaaaaaaaaa",output_img)
+cv2.waitKey(0)
+
+
+kernel = np.ones((2,2),np.uint8)
+output_img = cv2.erode(output_img,kernel,iterations = 2)
+cv2.imshow("aaaaaaaaaaaaa",output_img)
+cv2.waitKey(0)
+
+contours,hier=cv2.findContours(output_img,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+contours=list(contours)
+contours.sort(key=cv2.contourArea,reverse=True)
+blank=np.zeros(image.shape,np.uint8)
+
+for i,c in enumerate(contours):
+    if(cv2.contourArea(c)<350):
+        continue
+
+    print(cv2.contourArea(c))
+    cv2.drawContours(blank,contours,i,(255,255,255),-1)
+    cv2.imshow("blank",blank)
+    cv2.waitKey(0)
+
 
