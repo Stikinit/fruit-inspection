@@ -149,8 +149,8 @@ elif (COLOR_SPACE==ColorSpace.HSL):
     masked = cv2.cvtColor(masked, cv2.COLOR_BGR2HLS)
 
 color_thief = ColorThief(imgpath_col)
-plt.imshow(final_img,vmin=0, vmax=255)
-plt.show()
+#plt.imshow(final_img,vmin=0, vmax=255)
+#plt.show()
 
 #with open('my_mean_05.csv', 'w') as my_file:
     #for i in range(len(mymean)):
@@ -310,13 +310,31 @@ contours=list(contours)
 contours.sort(key=cv2.contourArea,reverse=True)
 blank=np.zeros(image.shape,np.uint8)
 
+img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+good_contours=[]
+
 for i,c in enumerate(contours):
     if(cv2.contourArea(c)<350):
         continue
 
-    print(cv2.contourArea(c))
+    #print(cv2.contourArea(c))
+    blank=np.zeros(image.shape,np.uint8)
     cv2.drawContours(blank,contours,i,(255,255,255),-1)
-    cv2.imshow("blank",blank)
-    cv2.waitKey(0)
+    locs = np.where(blank == 255)
+    h,s,v=cv2.split(img_hsv)
+    pixels = h[locs]
+    mean_h=np.mean(pixels)
+    print(mean_h)
+    if(mean_h<23):
+        good_contours.append(c)
+
+blank=np.zeros(image.shape,np.uint8)
+print(len(good_contours))
+for i,c in enumerate(good_contours):
+    cv2.drawContours(blank,good_contours,i,(255,255,255),-1)
 
 
+contours,hier=cv2.findContours(blank,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+cv2.drawContours(img,contours,-1,(0,0,255),3)
+cv2.imshow("final image",img)
+cv2.waitKey(0)
