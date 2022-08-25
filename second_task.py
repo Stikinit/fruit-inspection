@@ -16,18 +16,33 @@ class DistanceType(Enum):
     MAHALANOBIS=1
     DOUBLE=2
 
-imgpath_ir="./asset/second_task/C0_000004.png"
-imgpath_col="./asset/second_task/C1_000004.png"
+class Image_num(Enum):
+    IMG4=0
+    IMG5=1
+
+IMAGE=Image_num.IMG4
+
+if(IMAGE==Image_num.IMG4):
+    imgpath_ir="./asset/second_task/C0_000004.png"
+    imgpath_col="./asset/second_task/C1_000004.png"
+    X_MIN = 124
+    X_MAX = 135
+    Y_MIN = 94
+    Y_MAX = 105
+
+elif(IMAGE==Image_num.IMG5):
+    imgpath_ir="./asset/second_task/C0_000004.png"
+    imgpath_col="./asset/second_task/C1_000004.png"
+    X_MIN = 139
+    X_MAX = 144
+    Y_MIN = 152
+    Y_MAX = 157
+
+
 COLOR_SPACE=ColorSpace.RGB
 DISTANCE_TYPE=DistanceType.MAHALANOBIS
-#X_MIN = 139
-X_MIN = 124
-#X_MAX = 144
-X_MAX = 135
-#Y_MIN = 152
-Y_MIN = 94
-#Y_MAX = 157
-Y_MAX = 105
+
+
 
 image=cv2.imread(imgpath_ir,cv2.IMREAD_GRAYSCALE)
 img = cv2.imread(imgpath_col)
@@ -41,10 +56,11 @@ contours,hier=cv2.findContours(opened,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 contours=list(contours)
 contours.sort(key=cv2.contourArea,reverse=True)
 blank=np.zeros(image.shape,np.uint8)
+blank2=np.zeros(image.shape,np.uint8)
 cv2.drawContours(blank,contours,1,(255,255,255),-1)
-
-plt.imshow(blank,cmap='gray',vmin=0, vmax=255)
-plt.show()
+cv2.drawContours(blank2,contours,1,(255,255,255),28)
+#plt.imshow(blank,cmap='gray',vmin=0, vmax=255)
+#plt.show()
 
 #contours,hier=cv2.findContours(blank,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 #contours=list(contours)
@@ -65,8 +81,8 @@ mask=cv2.morphologyEx(blank,cv2.MORPH_OPEN,kernel_opcl)
 
 masked=cv2.bitwise_and(img,img,mask=mask)
 
-plt.imshow(masked,vmin=0, vmax=255)
-plt.show()
+#plt.imshow(masked,vmin=0, vmax=255)
+#plt.show()
 
 #masked=cv2.medianBlur(masked, 3)
 #plt.imshow(masked,cmap='gray',vmin=0, vmax=255)
@@ -89,8 +105,8 @@ limg = cv2.merge((cl,a,b))
 enhanced_img = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
 # Stacking the original image with the enhanced image
 result = np.hstack((masked, enhanced_img))
-cv2.imshow('Result', result)
-cv2.waitKey(0)
+#cv2.imshow('Result', result)
+#cv2.waitKey(0)
 masked=enhanced_img.copy()
 
 
@@ -230,8 +246,8 @@ elif (DISTANCE_TYPE==DistanceType.EUCLIDIAN):
 
 max_dist=np.max(dist)
 min_dist=np.min(dist)
-plt.imshow(dist, cmap='twilight',vmin=min_dist, vmax=max_dist)
-plt.show()
+#plt.imshow(dist, cmap='twilight',vmin=min_dist, vmax=max_dist)
+#plt.show()
 
 OldRange = (max_dist - min_dist)
 
@@ -267,3 +283,12 @@ cv2.waitKey(0)
 # or your HSV image, which I *believe* is what you want
 #output_hsv = mapped_dist.copy()
 #output_hsv[np.where(mask==0)] = 0
+
+output_img[np.where(blank2==255)]=0
+cv2.imshow("Masked",output_img)
+cv2.waitKey(0)
+
+retval,output_img=cv2.threshold(output_img,1,255,cv2.THRESH_BINARY)
+cv2.imshow("aaaaaaaaaaaaa",output_img)
+cv2.waitKey(0)
+
