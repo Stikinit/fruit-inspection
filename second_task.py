@@ -18,15 +18,15 @@ class DistanceType(Enum):
 
 imgpath_ir="./asset/second_task/C0_000004.png"
 imgpath_col="./asset/second_task/C1_000004.png"
-COLOR_SPACE=ColorSpace.LUV
+COLOR_SPACE=ColorSpace.RGB
 DISTANCE_TYPE=DistanceType.MAHALANOBIS
-#X_MIN = 29
+#X_MIN = 139
 X_MIN = 124
-#X_MAX = 40
+#X_MAX = 144
 X_MAX = 135
-#Y_MIN = 53
+#Y_MIN = 152
 Y_MIN = 94
-#Y_MAX = 64
+#Y_MAX = 157
 Y_MAX = 105
 
 image=cv2.imread(imgpath_ir,cv2.IMREAD_GRAYSCALE)
@@ -43,8 +43,19 @@ contours.sort(key=cv2.contourArea,reverse=True)
 blank=np.zeros(image.shape,np.uint8)
 cv2.drawContours(blank,contours,1,(255,255,255),-1)
 
+plt.imshow(blank,cmap='gray',vmin=0, vmax=255)
+plt.show()
+
+#contours,hier=cv2.findContours(blank,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+#contours=list(contours)
+#contours.sort(key=cv2.contourArea,reverse=True)
+#blank=np.zeros(image.shape,np.uint8)
+#cv2.drawContours(blank,contours,1,(255,255,255),-1)
+
+
 #plt.imshow(blank,cmap='gray',vmin=0, vmax=255)
 #plt.show()
+
 
 kernel_opcl=cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
 mask=cv2.morphologyEx(blank,cv2.MORPH_OPEN,kernel_opcl)
@@ -54,13 +65,23 @@ mask=cv2.morphologyEx(blank,cv2.MORPH_OPEN,kernel_opcl)
 
 masked=cv2.bitwise_and(img,img,mask=mask)
 
+plt.imshow(masked,vmin=0, vmax=255)
+plt.show()
+
+#masked=cv2.medianBlur(masked, 3)
+#plt.imshow(masked,cmap='gray',vmin=0, vmax=255)
+#plt.show()
+
+#masked=cv2.bilateralFilter(masked, 5, 10, 10)
+#plt.imshow(masked,cmap='gray',vmin=0, vmax=255)
+#plt.show()
 
 # converting to LAB color space
 lab= cv2.cvtColor(masked, cv2.COLOR_BGR2LAB)
 l_channel, a, b = cv2.split(lab)
 # Applying CLAHE to L-channel
 # feel free to try different values for the limit and grid size:
-clahe = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(6,6))
+clahe = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(9,9))
 cl = clahe.apply(l_channel)
 # merge the CLAHE enhanced L-channel with the a and b channel
 limg = cv2.merge((cl,a,b))
@@ -68,26 +89,15 @@ limg = cv2.merge((cl,a,b))
 enhanced_img = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
 # Stacking the original image with the enhanced image
 result = np.hstack((masked, enhanced_img))
-#cv2.imshow('Result', result)
+cv2.imshow('Result', result)
+cv2.waitKey(0)
 masked=enhanced_img.copy()
 
 
-#plt.imshow(mask, cmap='gray',vmin=0, vmax=255)
-#plt.show()
-#temp = cv2.cvtColor(masked, cv2.COLOR_BGR2GRAY)
-#for i, c in enumerate(temp):
-#        for j, k in enumerate(temp[i]):
-#            if(k<10):
-#                temp[i][j]=255
-#masked = cv2.cvtColor(masked, cv2.COLOR_HLS2BGR)
-
-masked=cv2.bilateralFilter(masked, 20, 20, 20)
+#masked=cv2.bilateralFilter(masked, 20, 20, 20)
 #plt.imshow(masked,cmap='gray',vmin=0, vmax=255)
 #plt.show()
 
-#masked=cv2.medianBlur(masked, 5)
-#plt.imshow(masked,cmap='gray',vmin=0, vmax=255)
-#plt.show()
 
 ch1=0
 ch2=0
@@ -165,6 +175,10 @@ elif (COLOR_SPACE==ColorSpace.HSL):
 if (DISTANCE_TYPE==DistanceType.MAHALANOBIS):
     # CREATE COVAR MATRIX
     cropped_selection = masked[Y_MIN:Y_MAX,X_MIN:X_MAX]
+
+    cropped_selection=cv2.medianBlur(cropped_selection, 9)
+
+
     fc,sc,tc=cv2.split(cropped_selection)
     fc_flat=fc.flatten()
     sc_flat=sc.flatten()
@@ -229,3 +243,27 @@ cv2.waitKey(0)
 
 # From here inrange function to capture the russet
 
+# inRange function works only on HSV images
+mapped_dist = cv2.cvtColor(mapped_dist, cv2.COLOR_BGR2HSV)
+
+# lower mask (0-10)
+lower_red = np.array([0,50,50])
+upper_red = np.array([10,255,255])
+mask0 = cv2.inRange(mapped_dist, lower_red, upper_red)
+
+# upper mask (170-180)
+lower_red = np.array([140,50,50])
+upper_red = np.array([180,255,255])
+mask1 = cv2.inRange(mapped_dist, lower_red, upper_red)
+
+# join my masks
+mask = mask0+mask1
+
+# set my output img to zero everywhere except my mask
+output_img = mapped_dist.copy()
+output_img[np.where(mask==0)] = 0
+cv2.imshow("Ranged",output_img)
+cv2.waitKey(0)
+# or your HSV image, which I *believe* is what you want
+#output_hsv = mapped_dist.copy()
+#output_hsv[np.where(mask==0)] = 0
